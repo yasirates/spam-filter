@@ -19,36 +19,33 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
     
-    - name: Verify project structure
-      run: |
-        echo "=== Checking project files ==="
-        ls -la
-        echo "=== Checking build.gradle ==="
-        cat build.gradle || echo "build.gradle not found"
-        echo "=== Checking settings.gradle ==="
-        cat settings.gradle || echo "settings.gradle not found"
-        echo "=== Checking app/build.gradle ==="
-        cat app/build.gradle || echo "app/build.gradle not found"
-    
-    - name: Download Gradle Wrapper
+    - name: Download Gradle Wrapper JAR
       run: |
         mkdir -p gradle/wrapper
-        wget https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.jar -O gradle/wrapper/gradle-wrapper.jar
-        wget https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.properties -O gradle/wrapper/gradle-wrapper.properties
+        curl -L https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
         
-    - name: Create gradlew scripts
+    - name: Create gradle-wrapper.properties
       run: |
-        cat > gradlew << 'EOF'
-        #!/bin/sh
-        DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
-        APP_HOME=$( cd "${0%/*}/.." && pwd )
-        CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
-        exec java $DEFAULT_JVM_OPTS -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
+        cat > gradle/wrapper/gradle-wrapper.properties << EOF
+        distributionBase=GRADLE_USER_HOME
+        distributionPath=wrapper/dists
+        distributionUrl=https\://services.gradle.org/distributions/gradle-8.4-bin.zip
+        zipStoreBase=GRADLE_USER_HOME
+        zipStorePath=wrapper/dists
         EOF
+        
+    - name: Create gradlew script
+      run: |
+        cat > gradlew << 'GRADLEW_EOF'
+        #!/bin/sh
+        APP_HOME="$(cd "$(dirname "$0")" && pwd)"
+        CLASSPATH="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+        exec java -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
+        GRADLEW_EOF
         chmod +x gradlew
         
     - name: Build Debug APK
-      run: ./gradlew assembleDebug --stacktrace --info
+      run: ./gradlew assembleDebug --stacktrace
       
     - name: Upload APK
       uses: actions/upload-artifact@v4

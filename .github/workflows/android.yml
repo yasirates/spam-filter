@@ -1,4 +1,4 @@
-name: Android CI Build
+name: Android Build
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
+    - name: Checkout Repository
       uses: actions/checkout@v4
       
     - name: Set up JDK 17
@@ -18,21 +18,39 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '17'
-        cache: 'gradle'
+    
+    - name: Verify project structure
+      run: |
+        echo "=== Checking project files ==="
+        ls -la
+        echo "=== Checking build.gradle ==="
+        cat build.gradle || echo "build.gradle not found"
+        echo "=== Checking settings.gradle ==="
+        cat settings.gradle || echo "settings.gradle not found"
+        echo "=== Checking app/build.gradle ==="
+        cat app/build.gradle || echo "app/build.gradle not found"
+    
+    - name: Download Gradle Wrapper
+      run: |
+        mkdir -p gradle/wrapper
+        wget https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.jar -O gradle/wrapper/gradle-wrapper.jar
+        wget https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.properties -O gradle/wrapper/gradle-wrapper.properties
         
-    - name: Setup Gradle
-      uses: gradle/gradle-build-action@v2
-      
-    - name: Create Gradle Wrapper
-      run: gradle wrapper --gradle-version=8.4
-        
-    - name: Make gradlew executable
-      run: chmod +x gradlew
+    - name: Create gradlew scripts
+      run: |
+        cat > gradlew << 'EOF'
+        #!/bin/sh
+        DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
+        APP_HOME=$( cd "${0%/*}/.." && pwd )
+        CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+        exec java $DEFAULT_JVM_OPTS -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
+        EOF
+        chmod +x gradlew
         
     - name: Build Debug APK
-      run: ./gradlew assembleDebug --stacktrace --no-daemon
+      run: ./gradlew assembleDebug --stacktrace --info
       
-    - name: Upload Debug APK
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       if: success()
       with:
